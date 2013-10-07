@@ -9,6 +9,9 @@ README.txt:		this file
 as240.pl:		the new assembler
 asm_gen.pl:		script for generating random, valid assembly files
 dtc1.asm:		example of a directed test case which should test all of the error and warning messages
+as240_old:      previous assembler, dating back to fall 2011. may be worth
+keeping for comparison. Note: must be executed on color machines (e.g.
+red.ece.cmu.edu)
 
 Open implementation questions:
 
