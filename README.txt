@@ -1,7 +1,7 @@
 Author: Paul Kennedy <pmkenned@andrew.cmu.edu>
 Last Modified: 3/27/2012
 
-This compressed file contains the new 18-240 assembler. If you make any changes to this script, please test against randomly generated assembly files and at least the provided directed test case to ensure that funtionality is preserved. Please contact me at pmkenned@andrew.cmu.edu regarding any questions, bugs, or changes.
+This repository is for the 18-240 assembler. If you make any changes to this script, please test against randomly generated assembly files and at least the provided directed test case to ensure that funtionality is preserved. Please contact me at pmkenned@andrew.cmu.edu regarding any questions, bugs, or changes.
 
 Files:
 
