@@ -18,7 +18,7 @@ Open implementation questions:
 
 * Should I detect invalid constants? e.g. $10J (not currently done)
 
-* Should I insert a "stop" instruction at the end automatically? (currently done)
+* Should I insert a "stop" instruction at the end automatically? (currently not done)
 
 * Should labels spelled the same with different case be allowed?
 
