@@ -1,14 +1,14 @@
 #!/usr/bin/perl
 
-my $version = "1.5";
+my $version = "1.5.2";
 
-# as240.pl: Version 1.5.1
+# as240.pl: Version 1.5.2
 # Assembler for 18-240
 # Written by Paul Kennedy <pmkenned@andrew.cmu.edu>
 # Last updated 11/9/2012
 #
 # Version 1.5.2 Notes - 4/22/2013
-#
+# =============================================================================
 # * Hex file is now memory.hex instead of $filename.hex
 #
 #
