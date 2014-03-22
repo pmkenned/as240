@@ -72,9 +72,9 @@ my %long0 = (
             );
 
 
-my %labels;
-my %label_refs;
-my %memory;
+my %g_labels;     # keys: label names. values: resolved address value.
+my %g_label_refs; # records places where labels are referenced. keys: addresses. values: label name.
+my %g_memory;     # result of assembly. keys: address. value: assembled hex value.
 
 main();
 
@@ -93,17 +93,17 @@ sub main {
     my $filename = $1;
 
     open(my $source_fh, "<", $ARGV[0]) or die $!;
-    my @lines = <$source_fh>;        # slurp assembly source
+    my @lines = <$source_fh>;      # slurp assembly source
     close $source_fh;
 
     s/\;.*//g foreach (@lines);    # strip comments
 
-    my $org = 0;
+    my $org = 0;    # updated by .org pseudo-instr
     my $offset = 0;
 
     my $line_num = 0;
     my $num_errors = 0;
-    foreach my $line (@lines) {
+    LINE: foreach my $line (@lines) {
         chomp $line;
         $line_num++;
 
@@ -116,7 +116,7 @@ sub main {
             print "error on line $line_num: $error_str\n";
             print $line . "\n";
             $num_errors++;
-            next;
+            next LINE;
         }
 
         my %trans = translate(%line_data);
@@ -125,6 +125,7 @@ sub main {
         write_to_mem($org+$offset, $trans{word0}) if(exists $trans{word0});
         write_to_mem($org+$offset+1, $trans{word1}) if(exists $trans{word1});
 
+        # record the labels that are defined and referenced on this line
         store_labels($org, $offset, %line_data);
 
         # calculate next address
@@ -152,11 +153,11 @@ sub main {
 sub write_to_mem {
     my $addr = shift;
     my $data = shift;
-    if(exists $memory{$addr}) {
+    if(exists $g_memory{$addr}) {
         print "error: overlapping org region at $addr\n";
     }
     else {
-        $memory{$addr} = $data;
+        $g_memory{$addr} = $data;
     }
 }
 
@@ -164,20 +165,21 @@ sub write_list_file {
     my $filename = shift;
 
     open(my $list_fh, ">", $filename) or die $!;
-
-    foreach my $addr (sort keys %memory) {
-        printf $list_fh ("%04x: %04x\n", $addr, $memory{$addr});
+    foreach my $addr (sort keys %g_memory) {
+        printf $list_fh ("%04x: %04x\n", $addr, $g_memory{$addr});
     }
-
     close($list_fh);
-
 }
 
+# now that the value of every label is known, we can fill in all the
+# places where labels are referenced with their known values
+# TODO: consider including line number with the reference so that 
+# a line number can be printed for undefined labels
 sub fill_in_labels {
-    foreach my $ref_addr (keys %label_refs) {
-        my $label = $label_refs{$ref_addr};
-        if(exists $labels{$label}) {
-            $memory{$ref_addr} = $labels{$label};
+    foreach my $ref_addr (keys %g_label_refs) {
+        my $label = $g_label_refs{$ref_addr};
+        if(exists $g_labels{$label}) {
+            $g_memory{$ref_addr} = $g_labels{$label};
         }
         else {
             print "error: label $label is undefined\n";
@@ -185,12 +187,13 @@ sub fill_in_labels {
     }
 }
 
+# handles the recording of label definitions and references
 sub store_labels {
     my $org = shift;
     my $offset = shift;
     my %line_data = @_;
 
-    # label definitions
+    # record label definitions
     if(exists $line_data{label_def}) {
         my $label = $line_data{label_def};
         my $equ_def = (exists $line_data{pseudo} and $line_data{pseudo} =~ /equ/);
@@ -201,22 +204,24 @@ sub store_labels {
         else {
             $target = $org + $offset;
         }
-        if(exists $labels{$label}) {
+        if(exists $g_labels{$label}) {
             print "error: label $label already defined\n";
         }
         else {
-            $labels{$label} = $target;
+            $g_labels{$label} = $target;
         }
     }
 
-    # label references
+    # record label references
     if(exists $line_data{label_ref}) {
         my $label = $line_data{label_ref};
-        $label_refs{$org+$offset+1} = $label;
+        $g_label_refs{$org+$offset+1} = $label;
     }
-
 }
 
+# generate the assembly hex value by examining a hash
+# based on the following keys: inst, rd, rs, const, pseudo
+# some keys might not be present depending on the line of code
 sub translate {
     my %hash = @_;
     my %translation;
@@ -246,7 +251,12 @@ sub translate {
     return %translation;
 }
 
-sub parse{
+# takens a list of tokens and returns a hash with the relevant information
+# example: if the line was "l0 add r0, r1", the hash will have
+# the following keys/value pairs: label_def => l0, inst=>add, rd=>r0, rs=>r1
+# this makes it very easy to translate the line without having to keep track
+# of the order of the tokens. Instead, just see if a certain key is in the hash.
+sub parse {
     my @tokens = @_;
     my %line_data = ();
     my $token_str = get_token_str(@tokens);
@@ -334,6 +344,8 @@ sub common_parse_errors {
     return $error_str;
 }
 
+# creates a terse string based on the sequence tokens in a line
+# it is easy to check for parse errors using regex on this string
 sub get_token_str {
     my @tokens = @_;
     my $token_str = '';
